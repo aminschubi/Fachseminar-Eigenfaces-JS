@@ -4,7 +4,7 @@ import * as path from 'path'
 import * as url from 'url'
 
 let win: BrowserWindow;
-
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192");
 app.on('ready', createWindow)
 
 app.on('activate', () => {

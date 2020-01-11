@@ -5,6 +5,7 @@ var fs = require("fs");
 var path = require("path");
 var url = require("url");
 var win;
+electron_1.app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192");
 electron_1.app.on('ready', createWindow);
 electron_1.app.on('activate', function () {
     if (win === null) {
