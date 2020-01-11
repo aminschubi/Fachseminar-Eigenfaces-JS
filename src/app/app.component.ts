@@ -20,6 +20,7 @@ export class AppComponent {
   diffImgVectors: number[][] = [];
   eigenVectors: number[][];
   meanVector: number[];
+  testSubject: number[];
   neededEigenVs: number = 0;
   t: NodeJS.Timer;
 
@@ -38,7 +39,7 @@ export class AppComponent {
     var imgData;
     var imageVectors: number[][] = [];
     var k = 15;
-    for (let j = 0; j < 11; j++) {
+    for (let j = 0; j < 10; j++) {
       for (let i = 1; i < k + 1; i++) {
         let urlstring = "";
         if (i < 10) {
@@ -109,7 +110,7 @@ export class AppComponent {
           }
 
 
-          if (i === 15 && j == 10) {
+          if (i === 15 && j == 9) {
             let sumOfVectors: number[] = [];
             imageVectors[0].forEach((num: number, index: number) => {
               sumOfVectors.push(num);
@@ -144,6 +145,8 @@ export class AppComponent {
             let AT = new Matrix(t.diffImgVectors).transpose();
             let C = A.mmul(AT);
 
+            console.log(C);
+
 
             let e = new EigenvalueDecomposition(C);
             let eigenV = e.eigenvectorMatrix;
@@ -153,6 +156,8 @@ export class AppComponent {
             eigenV.to2DArray().forEach((eigenvector: number[]) => {
               realEigenVArray.push(new Matrix([eigenvector]).mmul(A).to1DArray());
             });
+
+            console.log(realEigenVArray);
 
             let eigsum = 0;
             for (let i = eigenValues.length - 1; i > 0; i--) {
@@ -245,20 +250,50 @@ export class AppComponent {
       }
     }
 
-    let weights: number[][][] = [];
-    let pLength = imageVectors.length;
+    document.getElementById("myButton").onclick = (e: MouseEvent) => {
+      let weights: number[][][] = [];
+      let pLength = imageVectors.length;
+      
 
-    for (let x = 0; x < pLength - 1; x++) {
-      weights.push([]);
-      for (let i = this.neededEigenVs; i < this.eigenVectors.length - 1; i++) {
-        let vKT = new Matrix([this.eigenVectors[i]]).transpose();
-        let U = new Matrix([imageVectors[x]]);
-        let M = new Matrix([this.meanVector]);
-        weights[x].push((U.sub(M)).mmul(vKT).to1DArray());
+      for (let x = 0; x < 10/*pLength - 1*/; x++) {
+
+        weights.push([]);
+        console.log("image number" + x);
+        for (let i = 0; i < this.eigenVectors.length - 1; i++) {
+
+          let vKT = new Matrix([this.eigenVectors[i]]).transpose();
+          let U = new Matrix([imageVectors[x]]);
+          let M = new Matrix([this.meanVector]);
+          let uU = (U.subtract(M)).mmul(vKT).to1DArray();
+          weights[x].push(uU);
+          //console.log(uU);
+        }
 
       }
-      console.log(weights[x]);
-    }
+
+      let t = this;
+      this.readPicture("./dist/eigenfaces/assets/subject01.wink.pgm", ()=>{
+        let w: number[][] = [];
+
+
+        console.log(t.testSubject);
+        for (let i = 0; i < t.eigenVectors.length - 1; i++) {
+          let vKT = new Matrix([t.eigenVectors[i]]).transpose();
+          let U = new Matrix([t.testSubject]);
+          let M = new Matrix([t.meanVector]);
+          let uU = (U.subtract(M)).mmul(vKT).to1DArray();
+          w.push(uU);
+        }
+
+        for (let y = 0; y < 10/*pLength - 1*/; y++) {
+          for (let j = 0; j < w.length; j++) {
+            console.log(t.euklidischerAbstand(w[j], weights[y][j]));
+          }
+        }
+      });
+      
+
+    };
   }
 
   euklidischerAbstand(A: number[], B: number[]) {
@@ -269,6 +304,37 @@ export class AppComponent {
     }
     d = Math.sqrt(sum);
     return d;
+  }
+
+  readPicture(urlstring: string, callback: Function) {
+    let t = this;
+    t.testSubject = [];
+    this.fs.readFile(urlstring, function (err, data) {
+      if (err) throw err;
+      let imgData = data;
+      let c = 0;
+      let start = 0;
+      for (const b of imgData) {
+        if (start == 0 && b == 255) {
+          start = 1;
+        }
+        if (start == 1) {
+          t.testSubject.push(+b);
+          c++;
+        }
+
+      }
+      //console.log(c);
+
+      if (c != 45045) {
+        for (let i = 0; i < 45045 - c; i++) {
+          t.testSubject.push(255);
+        }
+      }
+
+      console.log(t.testSubject);
+      callback(t.testSubject);
+    });
   }
 
   vectorLength(v: number[]) {
