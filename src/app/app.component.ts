@@ -39,7 +39,7 @@ export class AppComponent {
     var imgData;
     var imageVectors: number[][] = [];
     var k = 15;
-    for (let j = 0; j < 10; j++) {
+    for (let j = 0; j < 8; j++) {
       for (let i = 1; i < k + 1; i++) {
         let urlstring = "";
         if (i < 10) {
@@ -91,26 +91,30 @@ export class AppComponent {
           imgData = data;
           let c = 0;
           let start = 0;
+          console.log(imgData.length);
+          let count = 0;
           for (const b of imgData) {
-            if (start == 0 && b == 255) {
+            if (start == 0 && imgData.length - count == 45045) {
               start = 1;
             }
             if (start == 1) {
               imageVectors[imageVectors.length - 1].push(+b);
               c++;
             }
-
+            count++;
           }
           //console.log(c);
-
+          /*
           if (c != 45045) {
             for (let i = 0; i < 45045 - c; i++) {
               imageVectors[imageVectors.length - 1].push(255);
             }
-          }
+          }*/
+
+          console.log(imageVectors.length);
 
 
-          if (i === 15 && j == 9) {
+          if (i === 15 && j == 7) {
             let sumOfVectors: number[] = [];
             imageVectors[0].forEach((num: number, index: number) => {
               sumOfVectors.push(num);
@@ -141,9 +145,9 @@ export class AppComponent {
               });
             });
 
-            let A = new Matrix(t.diffImgVectors);
-            let AT = new Matrix(t.diffImgVectors).transpose();
-            let C = A.mmul(AT);
+            let A = new Matrix(t.diffImgVectors).transpose();
+            let AT = new Matrix(t.diffImgVectors);//.transpose();
+            let C = AT.mmul(A);
 
             console.log(C);
 
@@ -154,7 +158,7 @@ export class AppComponent {
 
             let realEigenVArray: number[][] = [];
             eigenV.to2DArray().forEach((eigenvector: number[]) => {
-              realEigenVArray.push(new Matrix([eigenvector]).mmul(A).to1DArray());
+              realEigenVArray.push(new Matrix([eigenvector]).mmul(AT).to1DArray());
             });
 
             console.log(realEigenVArray);
@@ -244,6 +248,7 @@ export class AppComponent {
             t.drawMatrix(usedEigenfaces);
             t.cx = 0;
             t.cy = 240;
+            t.drawMatrix(imageVectors);
             //t.drawMatrix([test]);
           }
         });
@@ -253,18 +258,18 @@ export class AppComponent {
     document.getElementById("myButton").onclick = (e: MouseEvent) => {
       let weights: number[][][] = [];
       let pLength = imageVectors.length;
-      
 
-      for (let x = 0; x < 10/*pLength - 1*/; x++) {
+
+      for (let x = 0; x < 30/*pLength - 1*/; x++) {
 
         weights.push([]);
         console.log("image number" + x);
         for (let i = 0; i < this.eigenVectors.length - 1; i++) {
 
-          let vKT = new Matrix([this.eigenVectors[i]]).transpose();
-          let U = new Matrix([imageVectors[x]]);
-          let M = new Matrix([this.meanVector]);
-          let uU = (U.subtract(M)).mmul(vKT).to1DArray();
+          let vKT = new Matrix([this.eigenVectors[i]]);//.transpose();
+          let U = new Matrix([imageVectors[x]]).transpose();
+          let M = new Matrix([this.meanVector]).transpose();
+          let uU = vKT.mmul(U.subtract(M)).to1DArray();
           weights[x].push(uU);
           //console.log(uU);
         }
@@ -272,26 +277,49 @@ export class AppComponent {
       }
 
       let t = this;
-      this.readPicture("./dist/eigenfaces/assets/subject01.wink.pgm", ()=>{
+      this.readPicture("./dist/eigenfaces/assets/subject04.surprised.pgm", () => {
         let w: number[][] = [];
 
 
         console.log(t.testSubject);
         for (let i = 0; i < t.eigenVectors.length - 1; i++) {
-          let vKT = new Matrix([t.eigenVectors[i]]).transpose();
-          let U = new Matrix([t.testSubject]);
-          let M = new Matrix([t.meanVector]);
-          let uU = (U.subtract(M)).mmul(vKT).to1DArray();
+          let vKT = new Matrix([t.eigenVectors[i]]);//.transpose();
+          let U = new Matrix([t.testSubject]).transpose();
+          let M = new Matrix([t.meanVector]).transpose();
+          let uU = vKT.mmul(U.subtract(M)).to1DArray();
           w.push(uU);
         }
 
-        for (let y = 0; y < 10/*pLength - 1*/; y++) {
+        let smallestW = 1000000000;
+        let closestNeighbour = -1;
+        let candidates: number[][] = [];
+        let indexes: number[] = [];
+        let eValues: number[] = [];
+        for (let y = 0; y < 30/*pLength - 1*/; y++) {
           for (let j = 0; j < w.length; j++) {
-            console.log(t.euklidischerAbstand(w[j], weights[y][j]));
+            let e = (t.euklidischerAbstand(w[j], weights[y][j]));
+            if (e < 100000.0) {
+              //smallestW = e;
+              //closestNeighbour = y;
+              candidates.push(imageVectors[y]);
+              indexes.push(y);
+              eValues.push(e);
+            }
           }
         }
+
+        t.cx = 0;
+        t.cy = 360;
+        t.drawMatrix([t.testSubject]);
+        t.cx = 0;
+        t.cy = 480;
+        console.log(weights);
+        console.log(indexes);
+        console.log(eValues);
+        t.drawMatrix(candidates);
+
       });
-      
+
 
     };
   }
@@ -314,15 +342,16 @@ export class AppComponent {
       let imgData = data;
       let c = 0;
       let start = 0;
+      let count = 0;
       for (const b of imgData) {
-        if (start == 0 && b == 255) {
+        if (start == 0 && imgData.length - count == 45045) {
           start = 1;
         }
         if (start == 1) {
           t.testSubject.push(+b);
           c++;
         }
-
+        count++;
       }
       //console.log(c);
 
