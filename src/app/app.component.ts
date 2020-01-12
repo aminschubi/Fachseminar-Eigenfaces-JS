@@ -31,24 +31,25 @@ export class AppComponent {
     this.fs = window.fs;
     //@ts-ignore
     this.dialog = window.dialog;
-    //console.log("HI");
-    let width = 195;
-    let height = 231;
+
     var c = <HTMLCanvasElement>document.getElementById("myCanvas");
     this.ctx = c.getContext("2d");
+
     var imgData;
     var imageVectors: number[][] = [];
-    var k = 15;
-    for (let j = 0; j < 8; j++) {
-      for (let i = 1; i < k + 1; i++) {
+
+    var k = 15; //Anzahl Leute in Datenbank
+    var z = 3;
+    for (let j = 0; j < k; j++) {
+      for (let i = 1; i < z + 1; i++) {
         let urlstring = "";
-        if (i < 10) {
-          urlstring += "./dist/eigenfaces/assets/subject0" + i;
+        if (j < 9) {
+          urlstring += "./dist/eigenfaces/assets/subject0" + (j + 1);
         } else {
-          urlstring += "./dist/eigenfaces/assets/subject" + i;
+          urlstring += "./dist/eigenfaces/assets/subject" + (j + 1);
         }
 
-        switch (j) {
+        switch (i - 1) {
           case 0:
             urlstring += ".normal.pgm"
             break;
@@ -56,19 +57,19 @@ export class AppComponent {
             urlstring += ".centerlight.pgm"
             break;
           case 2:
-            urlstring += ".glasses.pgm"
-            break;
-          case 3:
             urlstring += ".happy.pgm"
             break;
+          case 3:
+            urlstring += ".rightlight.pgm"
+            break;
           case 4:
-            urlstring += ".leftlight.pgm"
+            urlstring += ".glasses.pgm"
             break;
           case 5:
             urlstring += ".noglasses.pgm"
             break;
           case 6:
-            urlstring += ".rightlight.pgm"
+            urlstring += ".happy.pgm"
             break;
           case 7:
             urlstring += ".sad.pgm"
@@ -80,250 +81,247 @@ export class AppComponent {
             urlstring += ".surprised.pgm"
             break;
           case 10:
-            urlstring += ".wink.pgm"
+            urlstring += ".leftlight.pgm"
             break;
         }
 
         let t = this;
-        this.fs.readFile(urlstring, function (err, data) {
-          if (err) throw err;
-          imageVectors.push([]);
-          imgData = data;
-          let c = 0;
-          let start = 0;
-          console.log(imgData.length);
-          let count = 0;
-          for (const b of imgData) {
-            if (start == 0 && imgData.length - count == 45045) {
-              start = 1;
-            }
-            if (start == 1) {
-              imageVectors[imageVectors.length - 1].push(+b);
-              c++;
-            }
-            count++;
+
+        //Lese Bild als Buffer aus
+        imgData = this.fs.readFileSync(urlstring);
+
+        imageVectors.push([]);
+
+        let start = 0;
+        let count = 0;
+
+        for (const b of imgData) {
+          //Überspringe solange Buffer-Objekte bis Länge des restlichen Buffers == Breite x Länge der Bilder
+          if (start == 0 && imgData.length - count == 45045) {
+            start = 1;
           }
-          //console.log(c);
-          /*
-          if (c != 45045) {
-            for (let i = 0; i < 45045 - c; i++) {
-              imageVectors[imageVectors.length - 1].push(255);
-            }
-          }*/
+          if (start == 1) {
+            imageVectors[imageVectors.length - 1].push(+b);
+          }
+          count++;
+        }
 
-          console.log(imageVectors.length);
-
-
-          if (i === 15 && j == 7) {
-            let sumOfVectors: number[] = [];
-            imageVectors[0].forEach((num: number, index: number) => {
-              sumOfVectors.push(num);
-            });
-            ////console.log(imageVectors);
-            for (let i = 1; i < k; i++) {
-              sumOfVectors.forEach((number: number, index: number) => {
-                ////console.log(index + "\n");
-                sumOfVectors[index] = sumOfVectors[index] + imageVectors[i][index];
-              });
-            }
-            //console.log("Sum:" + sumOfVectors);
+        //Falls beim letzten Bild angekommen
+        if (j === k - 1 && i == z) {
+          //Summenvektor aller Gesichter
+          let sumOfVectors: number[] = [];
+          for (const n of imageVectors[0]) {
+            sumOfVectors.push(n);
+          };
+          //Addiere jeden Gesichts-Vektor auf Summenvektor
+          for (let i = 1; i < k; i++) {
             sumOfVectors.forEach((number: number, index: number) => {
-              sumOfVectors[index] = sumOfVectors[index] * (1 / k);
+              sumOfVectors[index] = sumOfVectors[index] + imageVectors[i][index];
             });
-            t.meanVector = sumOfVectors;
-            //console.log("Mean:" + sumOfVectors);
-            //let meanOfVectors: number[] = Object.assign([], sumOfVectors);
-
-
-            //let diffImageVectors : LinAl.FloatVector
-
-            imageVectors.forEach((vector: number[], index: number) => {
-              t.diffImgVectors.push([]);
-              let i = index;
-              vector.forEach((value: number, index: number) => {
-                t.diffImgVectors[t.diffImgVectors.length - 1].push(value - sumOfVectors[index]);
-              });
-            });
-
-            let A = new Matrix(t.diffImgVectors).transpose();
-            let AT = new Matrix(t.diffImgVectors);//.transpose();
-            let C = AT.mmul(A);
-
-            console.log(C);
-
-
-            let e = new EigenvalueDecomposition(C);
-            let eigenV = e.eigenvectorMatrix;
-            let eigenValues = e.realEigenvalues;
-
-            let realEigenVArray: number[][] = [];
-            eigenV.to2DArray().forEach((eigenvector: number[]) => {
-              realEigenVArray.push(new Matrix([eigenvector]).mmul(AT).to1DArray());
-            });
-
-            console.log(realEigenVArray);
-
-            let eigsum = 0;
-            for (let i = eigenValues.length - 1; i > 0; i--) {
-              eigsum += eigenValues[i];
-              ////console.log(eigsum);
-            }
-
-            let delta = eigenValues.length;
-            let csum = 0;
-            for (let j = eigenValues.length - 1; j > 0; j--) {
-              csum += eigenValues[j];
-              let tv = csum / eigsum;
-              //console.log(eigsum, csum, tv);
-              if (tv > 0.95) {
-                delta = j;
-                t.neededEigenVs = j;
-                break;
-              }
-            }
-
-            let usedEigenfaces = realEigenVArray.slice(delta, realEigenVArray.length - 1);
-            t.eigenVectors = usedEigenfaces;
-            //console.log(eigenValues.length);
-            //console.log(delta);
-
-
-            /*
-            let test = imageVectors[15];
-            let testWeights: number[][] = [];
- 
-            for (let i = delta; i < realEigenVArray.length - 1; i++) {
-              let vKT = new Matrix([realEigenVArray[i]]).transpose();
-              let U = new Matrix([test]);
-              let M = new Matrix([sumOfVectors]);
-              testWeights.push((U.sub(M)).mmul(vKT).to1DArray());
-            }
- 
-            let candidates: number[] = [];
-            
-            for (let y = 0; y < pLength - 1; y++) {
-              weights[y].forEach((weightVector: number[], index: number) => {
-                let d = t.euklidischerAbstand(testWeights[index], weightVector);
-                //console.log(d);
-              });
-            }*/
-
-            ////console.log(weights[0]);
-
-            /*
-            let M = mat(t.diffImgVectors);
-            let mT = mat(t.diffImgVectors).transpose();
-            //console.log(M);
-            let C = M.multiply(mT);
-            //let C = M.transpose();
-            //let cM = C.multiply(M);
-            let e: LinAl.Vector<number> = calculateEigenvalues<number>(C);
-            //let eT = calculateEigenvalues(Ct);
-            //console.log(e);
-            ////console.log(eT);
-      
-            let eigenVektoren: LinAl.Vector<number>[] = [];
-      
-            for (let i = 0; i < e.getDimension(); i++) {
-              //console.log(getEigenvectorForEigenvalue(C, e.getEntry(i)));
-            }
-            */
-            /*
-            e.toArray().forEach((entry: number, index: number) => {
-              eigenVektoren.push(getEigenvectorForEigenvalue(C, entry));
-            });
-            //console.log(eigenVektoren);
-      
-            */
-            ////console.log(t.diffImgVectors);
-            /*t.drawMatrix(imageVectors);
-            t.cx = 0;
-            t.cy = 120;
-            t.drawMatrix(t.diffImgVectors);
-            t.cx = 0;
-            t.cy = 240;*/
-            t.drawMatrix([sumOfVectors]);
-            t.cx = 0;
-            t.cy = 120;
-            t.drawMatrix(usedEigenfaces);
-            t.cx = 0;
-            t.cy = 240;
-            t.drawMatrix(imageVectors);
-            //t.drawMatrix([test]);
           }
-        });
+          //Berechne Durchschnittsvektor mit Summenvektor
+          sumOfVectors.forEach((number: number, index: number) => {
+            sumOfVectors[index] = sumOfVectors[index] * (1 / k);
+          });
+          t.meanVector = sumOfVectors;
+          console.log("Mean:" + sumOfVectors);
+          //Erstelle Differenztgesichter durch Gesichtsbild[i] - Durchschnittsgesicht
+          imageVectors.forEach((vector: number[]) => {
+            t.diffImgVectors.push([]);
+            vector.forEach((value: number, index: number) => {
+              t.diffImgVectors[t.diffImgVectors.length - 1].push(value - sumOfVectors[index]);
+            });
+          });
+
+          //Erstelle Matrix A = {diffBild_1 diffBild_2 ... diffBild_k}
+          let A = new Matrix(t.diffImgVectors).transpose();
+          //AT = A^T
+          let AT = new Matrix(t.diffImgVectors);
+          //Berechne Kovarianzmatrix C = A^T * A statt AA^T wegen Geschwindigkeitsproblematik
+          let C = AT.mmul(A);
+          //e = Eigenwertzerlegung von C
+          let e = new EigenvalueDecomposition(C);
+          //eigenV = Eigenvektor-Matrix von C
+          let eigenV = e.eigenvectorMatrix;
+          //eigenValues = Eigenwerte von C
+          let eigenValues = e.realEigenvalues;
+          //Array zur Speicherung der Eigenvektoren von C = AA^T
+          let realEigenVArray: number[][] = [];
+          for (let i = 0; i < eigenV.columns; i++) {
+            //Multipliziere Eigenvektoren mit A um auf Eigenvektoren von AA^T zu kommen
+            let e = A.mmul(eigenV.getColumnVector(i));
+            let eA = e.to1DArray();
+            realEigenVArray.push(eA);
+          }
+          console.log("C =>", C);
+          console.log("A =>", A)
+          console.log("AT => ", AT);
+          console.log("Eigenvektor-Matrix =>", eigenV)
+          console.log("Eigenvektor-Array =>", realEigenVArray);
+          console.log("Eigenwerte =>", eigenValues);
+
+          //Summe aller Eigenwerte
+          let eigsum = 0;
+          for (let i = eigenValues.length - 1; i > 0; i--) {
+            eigsum += eigenValues[i];
+          }
+          //Array mit zu nutzenden Eigenfaces
+          let usedEigenfaces: number[][] = [];
+          //Sobald csum / eigsum > 0.95 => Anzahl bisher aufaddierter 
+          //Eigenwerte reicht zum rekonstruieren von 95% der Gesichter
+          let csum = 0;
+          for (let j = eigenValues.length - 1; j > 0; j--) {
+            csum += eigenValues[j];
+            usedEigenfaces.push(realEigenVArray[j]);
+            let tv = csum / eigsum;
+            if (tv > 0.95) {
+              t.neededEigenVs = j;
+              break;
+            }
+          }
+          //Setze zu benutzende Eigenfaces
+          t.eigenVectors = usedEigenfaces;
+
+          console.log("usedEigenfaces:", usedEigenfaces);
+
+          //Zeichne Differenzgesichter, benutzte Eigenfaces, benutzte Trainingsbilder
+          t.drawMatrix(imageVectors);
+          t.cx = 0;
+          t.cy = 120;
+          t.drawMatrix(t.diffImgVectors);
+          t.cx = 0;
+          t.cy = 240;
+          t.drawMatrix(usedEigenfaces);
+        }
       }
     }
 
-    document.getElementById("myButton").onclick = (e: MouseEvent) => {
-      let weights: number[][][] = [];
-      let pLength = imageVectors.length;
+    let weights: number[][] = [];
+    let pLength = this.eigenVectors.length;
 
+    for (let x = 0; x < pLength; x++) {
+      let U = new Matrix([imageVectors[x]])
+      weights.push([]);
+      console.log("image number" + x);
+      for (let i = 0; i < this.eigenVectors.length; i++) {
 
-      for (let x = 0; x < 30/*pLength - 1*/; x++) {
+        let vKT = new Matrix([this.eigenVectors[i]]).transpose();
 
-        weights.push([]);
-        console.log("image number" + x);
-        for (let i = 0; i < this.eigenVectors.length - 1; i++) {
-
-          let vKT = new Matrix([this.eigenVectors[i]]);//.transpose();
-          let U = new Matrix([imageVectors[x]]).transpose();
-          let M = new Matrix([this.meanVector]).transpose();
-          let uU = vKT.mmul(U.subtract(M)).to1DArray();
-          weights[x].push(uU);
-          //console.log(uU);
-        }
-
+        let M = new Matrix([this.meanVector]);
+        let uU = (U.sub(M)).mmul(vKT).to1DArray();
+        weights[x].push(uU[0]);
       }
+      weights[x] = this.normalize(weights[x]);
+    }
 
+    console.log(weights);
+    let testSubjects: number[][] = [];
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject04.happy.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject01.surprised.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject03.sad.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject04.surprised.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject05.glasses.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject08.normal.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject05.surprised.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject10.centerlight.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject13.sleepy.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject07.sad.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject06.sad.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject09.sleepy.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject10.sad.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject14.happy.pgm"));
+    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject07.surprised.pgm"));
+
+    this.cx = window.innerWidth / 2;
+    this.ctx.font = '48px serif';
+    this.ctx.fillText("Test Images:", this.cx, this.cy);
+
+    this.cx = 0;
+    this.cy = 410;
+    this.drawMatrix(testSubjects);
+
+    document.getElementById("myButton").onclick = (e: MouseEvent) => {
       let t = this;
-      this.readPicture("./dist/eigenfaces/assets/subject04.surprised.pgm", () => {
-        let w: number[][] = [];
+      let url = "";
 
+      let foundFaces: number[][] = [];
+      let reconFaces: number[][] = [];
+      for (let n = 0; n < testSubjects.length; n++) {
+        console.log(testSubjects.length);
+        let subject = testSubjects[n];
+        let w: number[] = [];
 
-        console.log(t.testSubject);
-        for (let i = 0; i < t.eigenVectors.length - 1; i++) {
-          let vKT = new Matrix([t.eigenVectors[i]]);//.transpose();
-          let U = new Matrix([t.testSubject]).transpose();
-          let M = new Matrix([t.meanVector]).transpose();
-          let uU = vKT.mmul(U.subtract(M)).to1DArray();
-          w.push(uU);
+        let diffSubject: number[] = [];
+        subject.forEach((num: number, index: number) => {
+          diffSubject.push(num - this.meanVector[index]);
+        });
+
+        //console.log(subject);
+        for (let i = 0; i < t.eigenVectors.length; i++) {
+          let vKT = new Matrix([t.eigenVectors[i]]).transpose();
+          let U = new Matrix([subject]);
+          let M = new Matrix([t.meanVector]);
+          let uU = (U.sub(M)).mmul(vKT).to1DArray();
+          //console.log(vKT, U, M, uU);
+          w.push(uU[0]);
         }
+
+        //console.log("tested image weights:", w);
+
+        let wN = this.normalize(w);
+
+        //console.log("normalized weights length:", wN.length, this.eigenVectors.length);
+        let testRecon: number[];
+        testRecon = Object.assign([], this.meanVector);
+        for (let r = 0; r < testRecon.length; r++) {
+          for (let i = 0; i < this.eigenVectors.length; i++) {
+            testRecon[r] += (this.eigenVectors[i][r] * wN[i]);
+          }
+        }
+
+        //console.log(testRecon);
+        reconFaces.push(testRecon);
 
         let smallestW = 1000000000;
         let closestNeighbour = -1;
         let candidates: number[][] = [];
         let indexes: number[] = [];
         let eValues: number[] = [];
-        for (let y = 0; y < 30/*pLength - 1*/; y++) {
-          for (let j = 0; j < w.length; j++) {
-            let e = (t.euklidischerAbstand(w[j], weights[y][j]));
-            if (e < 100000.0) {
-              //smallestW = e;
-              //closestNeighbour = y;
-              candidates.push(imageVectors[y]);
-              indexes.push(y);
-              eValues.push(e);
-            }
+        let abstaende = [];
+        for (let y = 0; y < weights.length/*pLength - 1*/; y++) {
+          //console.log(y, weights[y]);
+          let e = (t.euklidischerAbstand(wN, weights[y]));
+          abstaende.push(e);
+          if (e < smallestW) {
+            smallestW = e;
+            closestNeighbour = y;
           }
         }
 
-        t.cx = 0;
-        t.cy = 360;
-        t.drawMatrix([t.testSubject]);
-        t.cx = 0;
-        t.cy = 480;
-        console.log(weights);
-        console.log(indexes);
-        console.log(eValues);
-        t.drawMatrix(candidates);
+        foundFaces.push(imageVectors[closestNeighbour]);
 
-      });
-
-
+        candidates.push(imageVectors[closestNeighbour]);
+        indexes.push(closestNeighbour);
+        eValues.push(smallestW);
+      }
+      t.cx = 0;
+      t.cy = 550;
+      t.drawMatrix(foundFaces);
+      t.cx = 0;
+      t.cy = 700;
+      t.drawMatrix(reconFaces);
     };
+
   }
 
+  normalize(A: number[]) {
+    let res: number[] = [];
+    let l = this.vectorLength(A);
+    for (let i = 0; i < A.length; i++) {
+      res.push(A[i] / l);
+    }
+    return res;
+  }
   euklidischerAbstand(A: number[], B: number[]) {
     let d = 0;
     let sum = 0;
@@ -334,36 +332,26 @@ export class AppComponent {
     return d;
   }
 
-  readPicture(urlstring: string, callback: Function) {
+  readPicture(urlstring: string) {
     let t = this;
     t.testSubject = [];
-    this.fs.readFile(urlstring, function (err, data) {
-      if (err) throw err;
-      let imgData = data;
-      let c = 0;
-      let start = 0;
-      let count = 0;
-      for (const b of imgData) {
-        if (start == 0 && imgData.length - count == 45045) {
-          start = 1;
-        }
-        if (start == 1) {
-          t.testSubject.push(+b);
-          c++;
-        }
-        count++;
-      }
-      //console.log(c);
+    let dataToReturn = [];
+    let imgData = this.fs.readFileSync(urlstring);
+    let start = 0;
+    let count = 0;
 
-      if (c != 45045) {
-        for (let i = 0; i < 45045 - c; i++) {
-          t.testSubject.push(255);
-        }
+    for (const b of imgData) {
+      //Überspringe solange Buffer-Objekte bis Länge des restlichen Buffers == Breite x Länge der Bilder
+      if (start == 0 && imgData.length - count == 45045) {
+        start = 1;
       }
+      if (start == 1) {
+        dataToReturn.push(+b);
+      }
+      count++;
+    }
 
-      console.log(t.testSubject);
-      callback(t.testSubject);
-    });
+    return dataToReturn;
   }
 
   vectorLength(v: number[]) {
@@ -387,7 +375,6 @@ export class AppComponent {
     m.forEach((v: number[], index: number) => {
       v.forEach((pixel: number) => {
         let ind = index;
-        ////console.log(pixel);
         t.ctx.fillStyle = "rgb(" + pixel + "," + pixel + "," + pixel + ")";
         t.ctx.fillRect(this.cx, this.cy, 0.5, 0.5);
         this.cx += 0.5;
