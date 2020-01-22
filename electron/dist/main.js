@@ -20,7 +20,8 @@ function createWindow() {
     win = new electron_1.BrowserWindow({
         width: 1056, height: 830, webPreferences: {
             nodeIntegration: true
-        }
+        },
+        title: "Eigenfaces TS/HTML5/Angular"
     });
     win.loadURL(url.format({
         pathname: path.join(__dirname, "/../../dist/eigenfaces/index.html"),
@@ -28,7 +29,13 @@ function createWindow() {
         slashes: true,
     }));
     win.setResizable(false);
-    win.removeMenu();
+    win.webContents.once('did-finish-load', function () {
+        win.setMenuBarVisibility(false);
+    });
+    win.on('page-title-updated', function (e) {
+        e.preventDefault();
+    });
+    win.setTitle("Eigenfaces TS/HTML5/Angular");
     //win.webContents.openDevTools()
     win.on('closed', function () {
         win = null;

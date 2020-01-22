@@ -1,9 +1,5 @@
 import { Component } from '@angular/core';
 import { Matrix, EigenvalueDecomposition } from 'ml-matrix';
-import * as LinAl from 'src/linal/index';
-import { pow } from 'src/linal/index';
-import { setInterval } from 'timers';
-//import { NumberMatrix, mat, calculateEigenvalues, MatrixBuilder, getEigenvectorForEigenvalue } from 'src/linal/index';
 
 @Component({
   selector: 'app-root',
@@ -11,7 +7,7 @@ import { setInterval } from 'timers';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'my-angular-electron-app-demo';
+  title = 'Eigenfaces TS/HTML5/Angular';
   fs: any;
   dialog: any;
   ctx: CanvasRenderingContext2D;
@@ -38,7 +34,7 @@ export class AppComponent {
     var imgData;
     var imageVectors: number[][] = [];
 
-    var k = 15; //Anzahl Leute in Datenbank
+    var k = 16; //Anzahl Leute in Datenbank
     var z = 3;
     for (let j = 0; j < k; j++) {
       for (let i = 1; i < z + 1; i++) {
@@ -54,34 +50,34 @@ export class AppComponent {
             urlstring += ".normal.pgm"
             break;
           case 1:
-            urlstring += ".centerlight.pgm"
+            urlstring += ".sad.pgm"
             break;
           case 2:
             urlstring += ".happy.pgm"
             break;
           case 3:
-            urlstring += ".rightlight.pgm"
-            break;
-          case 4:
-            urlstring += ".glasses.pgm"
-            break;
-          case 5:
-            urlstring += ".noglasses.pgm"
-            break;
-          case 6:
-            urlstring += ".happy.pgm"
-            break;
-          case 7:
-            urlstring += ".sad.pgm"
-            break;
-          case 8:
-            urlstring += ".sleepy.pgm"
-            break;
-          case 9:
             urlstring += ".surprised.pgm"
             break;
-          case 10:
+          case 4:
+            urlstring += ".sleepy.pgm"
+            break;
+          case 5:
+            urlstring += ".sad.pgm"
+            break;
+          case 6:
+            urlstring += ".glasses.pgm"
+            break;
+          case 7:
+            urlstring += ".noglasses.pgm"
+            break;
+          case 8:
+            urlstring += ".rightlight.pgm"
+            break;
+          case 9:
             urlstring += ".leftlight.pgm"
+            break;
+          case 10:
+            urlstring += ".wink.pgm"
             break;
         }
 
@@ -197,44 +193,37 @@ export class AppComponent {
     }
 
     let weights: number[][] = [];
-    let pLength = this.eigenVectors.length;
+    let pLength = imageVectors.length;
 
     for (let x = 0; x < pLength; x++) {
       let U = new Matrix([imageVectors[x]])
       weights.push([]);
       console.log("image number" + x);
       for (let i = 0; i < this.eigenVectors.length; i++) {
-
-        let vKT = new Matrix([this.eigenVectors[i]]).transpose();
-
+        let vKT = new Matrix([this.normalize(this.eigenVectors[i])]).transpose();
         let M = new Matrix([this.meanVector]);
         let uU = (U.sub(M)).mmul(vKT).to1DArray();
         weights[x].push(uU[0]);
       }
-      weights[x] = this.normalize(weights[x]);
+      //weights[x] = this.normalize(weights[x]);
     }
 
     console.log(weights);
     let testSubjects: number[][] = [];
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject04.happy.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject01.surprised.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject03.sad.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject04.surprised.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject05.glasses.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject08.normal.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject05.surprised.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject10.centerlight.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject13.sleepy.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject07.sad.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject06.sad.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject09.sleepy.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject10.sad.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject14.happy.pgm"));
-    testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject07.surprised.pgm"));
+    let pictureURL = ".wink.pgm"
+    let number = "";
+    for (let i = 1; i < 17; i++) {
+      if (i < 10) {
+        number = "0" + (i);
+      } else {
+        number = "" + (i);
+      }
+      testSubjects.push(this.readPicture("./dist/eigenfaces/assets/subject" + number + pictureURL));
+    }
 
-    this.cx = window.innerWidth / 2;
-    this.ctx.font = '48px serif';
-    this.ctx.fillText("Test Images:", this.cx, this.cy);
+    this.cx = window.innerWidth / 2.3;
+    this.ctx.font = '35px arial';
+    this.ctx.fillText("Test-Bilder:", this.cx, 400);
 
     this.cx = 0;
     this.cy = 410;
@@ -251,14 +240,10 @@ export class AppComponent {
         let subject = testSubjects[n];
         let w: number[] = [];
 
-        let diffSubject: number[] = [];
-        subject.forEach((num: number, index: number) => {
-          diffSubject.push(num - this.meanVector[index]);
-        });
-
         //console.log(subject);
+
         for (let i = 0; i < t.eigenVectors.length; i++) {
-          let vKT = new Matrix([t.eigenVectors[i]]).transpose();
+          let vKT = new Matrix([t.normalize(t.eigenVectors[i])]).transpose();
           let U = new Matrix([subject]);
           let M = new Matrix([t.meanVector]);
           let uU = (U.sub(M)).mmul(vKT).to1DArray();
@@ -271,8 +256,8 @@ export class AppComponent {
         let wN = this.normalize(w);
 
         //console.log("normalized weights length:", wN.length, this.eigenVectors.length);
-        let testRecon: number[];
-        testRecon = Object.assign([], this.meanVector);
+        let testRecon: number[] = [];
+        Object.assign(testRecon, this.meanVector);
         for (let r = 0; r < testRecon.length; r++) {
           for (let i = 0; i < this.eigenVectors.length; i++) {
             testRecon[r] += (this.eigenVectors[i][r] * wN[i]);
@@ -282,7 +267,7 @@ export class AppComponent {
         //console.log(testRecon);
         reconFaces.push(testRecon);
 
-        let smallestW = 1000000000;
+        let smallestW = 1000000000000000;
         let closestNeighbour = -1;
         let candidates: number[][] = [];
         let indexes: number[] = [];
@@ -290,26 +275,28 @@ export class AppComponent {
         let abstaende = [];
         for (let y = 0; y < weights.length/*pLength - 1*/; y++) {
           //console.log(y, weights[y]);
-          let e = (t.euklidischerAbstand(wN, weights[y]));
+          let e = (t.euklidischerAbstand(wN, this.normalize(weights[y])));
+          //console.log(e);
           abstaende.push(e);
           if (e < smallestW) {
             smallestW = e;
             closestNeighbour = y;
           }
         }
-
+        console.log("Person " + n + " kleinstes d:" + smallestW);
         foundFaces.push(imageVectors[closestNeighbour]);
 
         candidates.push(imageVectors[closestNeighbour]);
         indexes.push(closestNeighbour);
         eValues.push(smallestW);
       }
+      //console.log(foundFaces);
       t.cx = 0;
       t.cy = 550;
-      t.drawMatrix(foundFaces);
+      t.drawMatrix(reconFaces);
       t.cx = 0;
       t.cy = 700;
-      t.drawMatrix(reconFaces);
+      t.drawMatrix(foundFaces);
     };
 
   }

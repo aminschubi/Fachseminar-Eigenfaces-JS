@@ -22,7 +22,8 @@ function createWindow() {
     win = new BrowserWindow({
         width: 1056, height: 830, webPreferences: {
             nodeIntegration: true
-        }
+        },
+        title: "Eigenfaces TS/HTML5/Angular"
     });
 
     win.loadURL(
@@ -34,8 +35,15 @@ function createWindow() {
     );
 
     win.setResizable(false);
-    win.removeMenu();
+    win.webContents.once('did-finish-load', () => {
+        win.setMenuBarVisibility(false);
+    })
 
+    win.on('page-title-updated', function (e) {
+        e.preventDefault()
+    });
+
+    win.setTitle("Eigenfaces TS/HTML5/Angular")
     //win.webContents.openDevTools()
 
     win.on('closed', () => {
